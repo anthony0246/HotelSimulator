@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 type Tab = "rooms" | "customers" | "hotels" | "employees" | "rentings";
 
@@ -130,7 +132,14 @@ function CrudPanel({ endpoint, columns, createFields }: {
 }
 
 export default function ManagePage() {
+  const { session } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("rooms");
+
+  useEffect(() => {
+    if (!session) { router.push("/login"); return; }
+    if (session.role !== "employee") { router.push("/customer/search"); return; }
+  }, [session, router]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "rentings",  label: "Rentings" },
@@ -139,6 +148,8 @@ export default function ManagePage() {
     { id: "hotels",    label: "Hotels" },
     { id: "employees", label: "Employees" },
   ];
+
+  if (!session) return null;
 
   return (
     <div>

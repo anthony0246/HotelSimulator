@@ -90,6 +90,25 @@ export async function POST(req: NextRequest) {
           { status: 409 }
         );
       }
+
+      // Verify booking's hotel chain matches the employee's hotel chain
+      const chainCheck = await client.query(
+        `SELECT 1
+         FROM Booking b
+         JOIN Room r   ON r.roomid  = b.roomid
+         JOIN Hotel bh ON bh.hotelid = r.hotelid
+         JOIN Hotel eh ON eh.hotelid = (SELECT hotelid FROM Employee WHERE employeeid = $2)
+         WHERE b.bookingid = $1 AND bh.chainid = eh.chainid`,
+        [bookingid, employeeid]
+      );
+      if (!chainCheck.rowCount || chainCheck.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return NextResponse.json(
+          { error: "You can only check in guests whose booking is for a hotel in your chain" },
+          { status: 403 }
+        );
+      }
+
       await client.query(
         "INSERT INTO Check_in (bookingid, rentingid) VALUES ($1, $2)",
         [bookingid, renting.rentingid]
