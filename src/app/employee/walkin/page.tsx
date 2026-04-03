@@ -1,18 +1,26 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function WalkInPage() {
-  const [form, setForm] = useState({
-    roomid: "", customerid: "", employeeid: "", startdate: "", enddate: "",
-  });
+  const { session } = useAuth();
+  const router = useRouter();
+
+  const [form, setForm] = useState({ roomid: "", customerid: "", startdate: "", enddate: "" });
   const [msg, setMsg] = useState("");
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!session) { router.push("/login"); return; }
+    if (session.role !== "employee") { router.push("/customer/search"); return; }
+  }, [session, router]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    const { roomid, customerid, employeeid, startdate, enddate } = form;
-    if (!roomid || !customerid || !employeeid || !startdate || !enddate) {
+    const { roomid, customerid, startdate, enddate } = form;
+    if (!roomid || !customerid || !startdate || !enddate) {
       setMsg("All fields are required."); return;
     }
     if (enddate <= startdate) { setMsg("End date must be after start date."); return; }
@@ -23,34 +31,36 @@ export default function WalkInPage() {
       body: JSON.stringify({
         roomid: Number(roomid),
         customerid: Number(customerid),
-        employeeid: Number(employeeid),
+        employeeid: session!.id,
         startdate,
         enddate,
-        // No bookingid — this is a walk-in
       }),
     });
     const data = await res.json();
     if (res.ok) {
       setMsg(`Renting #${data.rentingid} created successfully.`);
       setSuccess(true);
-      setForm({ roomid: "", customerid: "", employeeid: "", startdate: "", enddate: "" });
+      setForm({ roomid: "", customerid: "", startdate: "", enddate: "" });
     } else {
       setMsg(data.error);
       setSuccess(false);
     }
   };
 
+  if (!session) return null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-2">Walk-In Renting</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Customer arrived without a prior booking. Create a direct renting.
+        Customer arrived without a booking. Processing as{" "}
+        <span className="font-medium text-gray-700">{session.name}</span>
+        {session.hotelname && <> · {session.hotelname}</>}
       </p>
       <div className="bg-white rounded-xl shadow p-6 max-w-lg space-y-4">
         {[
           { label: "Room ID", key: "roomid", type: "number" },
           { label: "Customer ID", key: "customerid", type: "number" },
-          { label: "Employee ID (processing)", key: "employeeid", type: "number" },
           { label: "Start Date", key: "startdate", type: "date" },
           { label: "End Date", key: "enddate", type: "date" },
         ].map(({ label, key, type }) => (
@@ -61,9 +71,7 @@ export default function WalkInPage() {
               onChange={e => set(key, e.target.value)} />
           </div>
         ))}
-        {msg && (
-          <p className={`text-sm ${success ? "text-green-600" : "text-red-500"}`}>{msg}</p>
-        )}
+        {msg && <p className={`text-sm ${success ? "text-green-600" : "text-red-500"}`}>{msg}</p>}
         <button onClick={submit}
           className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">
           Create Walk-In Renting

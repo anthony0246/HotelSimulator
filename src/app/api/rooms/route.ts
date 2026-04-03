@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
       COALESCE(
         (SELECT json_agg(ra.amenityname) FROM Room_amenity ra WHERE ra.roomid = r.roomid),
         '[]'
-      ) AS amenities
+      ) AS amenities,
+      COALESCE(
+        (SELECT json_agg(rd.damagename) FROM Room_damage rd WHERE rd.roomid = r.roomid),
+        '[]'
+      ) AS damages
     FROM Room r
     JOIN Hotel h       ON h.hotelid  = r.hotelid
     JOIN HotelChain hc ON hc.chainid = h.chainid
@@ -33,7 +37,6 @@ export async function GET(req: NextRequest) {
   `;
 
   if (startDate && endDate) {
-    sql += ` AND r.bookingstatus = 'Available'`;
     sql += ` AND NOT EXISTS (
       SELECT 1 FROM Booking b
       WHERE b.roomid    = r.roomid

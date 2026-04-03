@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
-// GET /api/bookings?customerId=X   — or no param = all bookings (employee view)
+// GET /api/bookings?customerId=X  — customer's own bookings
+// GET /api/bookings?hotelId=X     — employee view: only bookings for that employee's chain
 export async function GET(req: NextRequest) {
   const customerId = req.nextUrl.searchParams.get("customerId");
+  const hotelId    = req.nextUrl.searchParams.get("hotelId");
 
   let sql = `
     SELECT
@@ -24,6 +26,14 @@ export async function GET(req: NextRequest) {
   if (customerId) {
     sql += ` WHERE b.customerid = $1`;
     params.push(Number(customerId));
+  } else if (hotelId) {
+    // Restrict to bookings whose hotel belongs to the same chain as the employee's hotel
+    sql += `
+      WHERE h.chainid = (
+        SELECT chainid FROM Hotel WHERE hotelid = $1
+      )
+    `;
+    params.push(Number(hotelId));
   }
   sql += ` ORDER BY b.startdate`;
 
