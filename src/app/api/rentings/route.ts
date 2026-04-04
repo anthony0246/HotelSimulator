@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 // If bookingid is provided: also insert into Check_in (booking → renting flow)
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { roomid, customerid, employeeid, startdate, enddate, bookingid } = body;
+  const { roomid, customerid, employeeid, startdate, enddate, bookingid, paid } = body;
 
   if (!roomid || !customerid || !employeeid || !startdate || !enddate) {
     return NextResponse.json(
@@ -69,9 +69,9 @@ export async function POST(req: NextRequest) {
 
     // Insert the renting
     const rentingResult = await client.query(
-      `INSERT INTO Renting (startdate, enddate, roomid, customerid, employeeid)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [startdate, enddate, roomid, customerid, employeeid]
+      `INSERT INTO Renting (startdate, enddate, roomid, customerid, employeeid, paid)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [startdate, enddate, roomid, customerid, employeeid, paid === true]
     );
     const renting = rentingResult.rows[0];
 

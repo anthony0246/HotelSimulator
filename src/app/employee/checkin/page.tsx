@@ -16,10 +16,11 @@ export default function CheckInPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [paidOnCheckIn, setPaidOnCheckIn] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    if (!session) { router.push("/login"); return; }
+    if (!session) { router.push("/"); return; }
     if (session.role !== "employee") { router.push("/customer/search"); return; }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,6 +47,7 @@ export default function CheckInPage() {
         startdate: selected.startdate.slice(0, 10),
         enddate: selected.enddate.slice(0, 10),
         bookingid: selected.bookingid,
+        paid: paidOnCheckIn,
       }),
     });
     const data = await res.json();
@@ -82,7 +84,7 @@ export default function CheckInPage() {
               <p className="text-sm">{b.hotelname} · Room #{b.roomid}</p>
               <p className="text-sm text-gray-500">{b.startdate?.slice(0, 10)} → {b.enddate?.slice(0, 10)}</p>
             </div>
-            <button onClick={() => { setSelected(b); setMsg(""); }}
+            <button onClick={() => { setSelected(b); setMsg(""); setPaidOnCheckIn(false); }}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
               Check In
             </button>
@@ -107,6 +109,37 @@ export default function CheckInPage() {
             <p className="text-sm text-gray-500 mb-4">
               Processing as <span className="font-medium text-gray-700">{session.name}</span>
             </p>
+
+            {/* Payment option */}
+            <div className="border rounded-lg p-3 mb-4">
+              <p className="text-sm font-medium mb-2">Payment</p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={!paidOnCheckIn}
+                    onChange={() => setPaidOnCheckIn(false)}
+                    className="accent-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">Payment pending</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paidOnCheckIn}
+                    onChange={() => setPaidOnCheckIn(true)}
+                    className="accent-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">Paid on check-in</span>
+                </label>
+              </div>
+              {paidOnCheckIn && (
+                <p className="text-xs text-green-600 mt-1.5">Renting will be marked as paid.</p>
+              )}
+            </div>
+
             {msg && <p className="text-sm text-red-500 mb-2">{msg}</p>}
             <div className="flex gap-3 justify-end">
               <button onClick={() => setSelected(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>

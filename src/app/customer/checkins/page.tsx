@@ -24,7 +24,7 @@ export default function MyCheckInsPage() {
   const [rentings, setRentings] = useState<Renting[]>([]);
 
   useEffect(() => {
-    if (!session) { router.push("/login"); return; }
+    if (!session) { router.push("/"); return; }
     if (session.role !== "customer") { router.push("/employee/checkin"); return; }
 
     fetch(`/api/rentings?customerId=${session.id}`)

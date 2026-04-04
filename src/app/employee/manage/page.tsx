@@ -61,6 +61,9 @@ function CrudPanel({ endpoint, columns, createFields }: {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [form, setForm] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+  const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editMsg, setEditMsg] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/${endpoint}`);
@@ -69,22 +72,43 @@ function CrudPanel({ endpoint, columns, createFields }: {
   }, [endpoint]);
   useEffect(() => { load(); }, [load]);
 
+  const coerce = (obj: Record<string, string>) =>
+    Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, isNaN(Number(v)) || v === "" ? v : Number(v)]));
+
   const create = async () => {
     const res = await fetch(`/api/${endpoint}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        Object.fromEntries(Object.entries(form).map(([k,v]) => [k, isNaN(Number(v)) || v === "" ? v : Number(v)]))
-      ),
+      body: JSON.stringify(coerce(form)),
     });
     const data = await res.json();
     setMsg(res.ok ? "Created!" : data.error);
     if (res.ok) { setForm({}); load(); }
   };
 
+  const openEdit = (row: Record<string, unknown>) => {
+    setEditRow(row);
+    const prefilled: Record<string, string> = {};
+    createFields.forEach(f => { prefilled[f.key] = String(row[f.key] ?? ""); });
+    setEditForm(prefilled);
+    setEditMsg("");
+  };
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    const idKey = columns[0].key;
+    const payload = { ...coerce(editForm), [idKey]: editRow[idKey] };
+    const res = await fetch(`/api/${endpoint}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok) { setEditRow(null); load(); } else { setEditMsg(data.error ?? "Update failed"); }
+  };
+
   const del = async (id: unknown) => {
     const idKey = columns[0].key;
     if (!confirm(`Delete ${idKey}=${id}?`)) return;
-    const paramKey = idKey.replace("id","Id").replace("Id","Id");
+    const paramKey = idKey.replace(/id$/i, "Id");
     await fetch(`/api/${endpoint}?${paramKey}=${id}`, { method: "DELETE" });
     load();
   };
@@ -112,7 +136,7 @@ function CrudPanel({ endpoint, columns, createFields }: {
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead><tr className="bg-gray-100 text-left">
-            {[...columns, { key: "_del", label: "" }].map(c => (
+            {[...columns, { key: "_actions", label: "" }].map(c => (
               <th key={c.key} className="p-2 border">{c.label}</th>
             ))}
           </tr></thead>
@@ -120,13 +144,43 @@ function CrudPanel({ endpoint, columns, createFields }: {
             <tr key={i} className="border-b hover:bg-gray-50">
               {columns.map(c => <td key={c.key} className="p-2 border">{String(r[c.key] ?? "")}</td>)}
               <td className="p-2 border">
-                <button onClick={() => del(r[columns[0].key])}
-                  className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded hover:bg-red-200">Delete</button>
+                <div className="flex gap-1">
+                  <button onClick={() => openEdit(r)}
+                    className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded hover:bg-yellow-200">Edit</button>
+                  <button onClick={() => del(r[columns[0].key])}
+                    className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded hover:bg-red-200">Delete</button>
+                </div>
               </td>
             </tr>
           ))}</tbody>
         </table>
       </div>
+
+      {/* Edit modal */}
+      {editRow && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
+            <h3 className="text-lg font-bold mb-4">
+              Edit {String(columns[0].label)} #{String(editRow[columns[0].key])}
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {createFields.map(f => (
+                <div key={f.key}>
+                  <label className="block text-xs font-medium mb-1">{f.label}</label>
+                  <input type={f.type ?? "text"} className="w-full border rounded p-2 text-sm"
+                    value={editForm[f.key] ?? ""}
+                    onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            {editMsg && <p className="text-xs text-red-500 mt-2">{editMsg}</p>}
+            <div className="flex gap-3 justify-end mt-4">
+              <button onClick={() => setEditRow(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button onClick={saveEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -137,7 +191,7 @@ export default function ManagePage() {
   const [tab, setTab] = useState<Tab>("rooms");
 
   useEffect(() => {
-    if (!session) { router.push("/login"); return; }
+    if (!session) { router.push("/"); return; }
     if (session.role !== "employee") { router.push("/customer/search"); return; }
   }, [session, router]);
 

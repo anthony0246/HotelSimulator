@@ -8,9 +8,14 @@ export async function GET(req: NextRequest) {
   let sql = `SELECT * FROM Customer`;
   const params: unknown[] = [];
 
+  const email = req.nextUrl.searchParams.get("email");
+
   if (customerId) {
     sql += ` WHERE customerid = $1`;
     params.push(Number(customerId));
+  } else if (email) {
+    sql += ` WHERE LOWER(email) = LOWER($1)`;
+    params.push(email.trim());
   } else if (search) {
     sql += ` WHERE LOWER(firstname) LIKE LOWER($1) OR LOWER(lastname) LIKE LOWER($1) OR idnumber = $1`;
     params.push(`%${search}%`);
