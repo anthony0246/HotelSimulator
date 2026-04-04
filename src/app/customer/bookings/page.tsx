@@ -17,7 +17,7 @@ export default function MyBookingsPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    if (!session) { router.push("/login"); return; }
+    if (!session) { router.push("/"); return; }
     if (session.role !== "customer") { router.push("/employee/checkin"); return; }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -9,7 +9,7 @@ export default function NavBar() {
 
   const handleLogout = () => {
     logout();
-    router.push("/login");
+    router.push("/");
   };
 
   return (
@@ -51,7 +51,7 @@ export default function NavBar() {
             </button>
           </>
         ) : (
-          <Link href="/login" className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition">
+          <Link href="/" className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition">
             Sign In
           </Link>
         )}
