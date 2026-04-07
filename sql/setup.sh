@@ -27,14 +27,24 @@ PG_HOST="${PG_HOST:-localhost}"
 PG_PORT="${PG_PORT:-5432}"
 DB_NAME="${DB_NAME:-ehotels}"
 
-# Prompt for password if not already set
+# Accept password as first argument, env var, or prompt
+if [ -n "$1" ]; then
+  PG_PASSWORD="$1"
+fi
+
 if [ -z "$PG_PASSWORD" ]; then
+  # read -s doesn't work reliably in Git Bash on Windows
+  # Fall back to visible prompt if silent read returns empty
   read -r -s -p "Enter PostgreSQL password for user '$PG_USER': " PG_PASSWORD
   echo
+  if [ -z "$PG_PASSWORD" ]; then
+    read -r -p "Password (visible — Git Bash fallback): " PG_PASSWORD
+  fi
 fi
 
 if [ -z "$PG_PASSWORD" ]; then
   echo "Error: Password cannot be empty."
+  echo "Tip: Pass it directly: bash sql/setup.sh YOUR_PASSWORD"
   exit 1
 fi
 
